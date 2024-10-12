@@ -1,0 +1,139 @@
+
+
+/*
+G O A L
+automatise the pdf layout creation for PRC 
+or any documentation needs 
+*/
+
+figma.showUI(__html__, { width: 500, height: 620 });
+
+// Define constants
+let jpgPerFrame = 1; /* Number of JPGs per new frame
+ror an App we use 3 jpgs per frame, for a webApp such as the Pyhsio.me
+PT platform, we use 1 jpg per frame. */
+let selection = figma.currentPage.selection;
+const frameWidth = 1684;
+const frameHeight = 1190;
+const margin = 60; // Default margin in pixels
+const titleFontSize = 32; // Font size for the title
+const titleFontWeight = "Bold"; // Font weight for the title
+const titlePositionX = 24; // X position for the title
+const titlePositionY = 24; // Y position for the title
+const frameGap = 200; // Gap between frames in pixels
+const jpgScale = 1; // JPG export scale (adjust to indirectly affect quality)
+const jpgGap = 30; // Gap between JPGs
+const warningMessage = '👋  Please select one or more groups, (ensure that your frames are arranged within groups).';
+
+
+if (selection.length === 0 || !selection.every(node => node.type === 'GROUP')) {
+  figma.notify(warningMessage);
+}
+
+// Listen for messages from the UI
+figma.ui.onmessage = (message) => {
+  if (message.type === 'create-pdf') {
+    selection = figma.currentPage.selection;
+    if (selection.length === 0 || !selection.every(node => node.type === 'GROUP')) {
+      figma.notify(warningMessage);
+      figma.ui.postMessage('done');
+    } else {
+      jpgPerFrame = message.screenPerPage;
+      convertFramesToJPG();
+    }
+  }
+};
+
+// Function to convert frames to JPG and place in new frames
+async function convertFramesToJPG() {
+  selection = figma.currentPage.selection;
+
+  // Load the font for the title (both Regular and Bold)
+  await Promise.all([
+    figma.loadFontAsync({ family: "Inter", style: "Regular" }),
+    figma.loadFontAsync({ family: "Inter", style: titleFontWeight })
+  ]);
+
+  // Get the X starting position from the first selected group
+  const startingXPosition = selection[0].x;
+
+  // Process each selected group in parallel
+  await Promise.all(selection.map(async (group) => {
+    const groupName = group.name; // Get the group name for the title
+    const frames = group.children.filter(node => node.type === 'FRAME');
+
+    for (let i = 0; i < frames.length; i += jpgPerFrame) {
+      // Create a new frame
+      const newFrame = figma.createFrame();
+      newFrame.resize(frameWidth, frameHeight);
+      newFrame.x = startingXPosition + (i / jpgPerFrame) * (frameWidth + frameGap);
+      newFrame.y = group.y; // Keep the original Y position of the group
+
+      // Add title text
+      const title = figma.createText();
+      title.fontSize = titleFontSize;
+      title.fontName = { family: "Inter", style: titleFontWeight };
+      title.characters = groupName;
+      title.x = titlePositionX;
+      title.y = titlePositionY;
+      newFrame.appendChild(title);
+
+      // Array to hold the JPG rectangles
+      const jpgRects = [];
+
+      for (let j = 0; j < jpgPerFrame; j++) {
+        const frameIndex = i + j;
+        if (frameIndex >= frames.length) break;
+
+        const node = frames[frameIndex];
+        // Export the frame as JPG with specified scale
+        const jpg = await node.exportAsync({ format: 'JPG', constraint: { type: 'SCALE', value: jpgScale } });
+        // Create a new image in the Figma UI
+        const newNode = figma.createImage(jpg);
+        const imageFill = { type: 'IMAGE', imageHash: newNode.hash, scaleMode: 'FILL' };
+
+        // Calculate the scaled dimensions to fit the frame with margin while maintaining aspect ratio
+        const aspectRatio = node.width / node.height;
+        let scaledWidth = node.width;
+        let scaledHeight = node.height;
+        const availableWidth = (frameWidth - 2 * margin - (jpgPerFrame - 1) * jpgGap) / jpgPerFrame;
+        const availableHeight = frameHeight - 2 * margin - titleFontSize;
+
+        if (scaledWidth > availableWidth) {
+          scaledWidth = availableWidth;
+          scaledHeight = scaledWidth / aspectRatio;
+        }
+
+        if (scaledHeight > availableHeight) {
+          scaledHeight = availableHeight;
+          scaledWidth = scaledHeight * aspectRatio;
+        }
+
+        // Create a rectangle for the image
+        const rect = figma.createRectangle();
+        rect.resize(scaledWidth, scaledHeight);
+        rect.fills = [imageFill];
+
+        // Position the rectangle
+        rect.x = j * (scaledWidth + jpgGap);
+        rect.y = margin + titleFontSize;
+
+        // Add the rectangle to the array
+        jpgRects.push(rect);
+      }
+
+      // Group the JPG rectangles
+      const jpgGroup = figma.group(jpgRects, newFrame);
+
+      // Center the jpg group inside the new frame
+      jpgGroup.x = (frameWidth - jpgGroup.width) / 2;
+      jpgGroup.y = (frameHeight - jpgGroup.height) / 2 + titleFontSize / 2;
+
+      // Add the new frame to the current page
+      figma.currentPage.appendChild(newFrame);
+    }
+
+    group.remove();
+  }));
+  figma.ui.postMessage('done');
+}

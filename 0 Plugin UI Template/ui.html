@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Figma Plugin UI</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 20px;
+      text-align: center;
+    }
+    button {
+      padding: 10px 20px;
+      background-color: #007aff;
+      border: none;
+      color: white;
+      cursor: pointer;
+      border-radius: 5px;
+    }
+  </style>
+</head>
+<body>
+  <h3>Simple UI</h3>
+  <button id="create-rect">Create Rectangle</button>
+
+  <script>
+    // Send a message to the main code when the button is clicked
+    document.getElementById('create-rect').onclick = () => {
+      parent.postMessage({ pluginMessage: { type: 'create-rect' } }, '*');
+    };
+  </script>
+</body>
+</html>

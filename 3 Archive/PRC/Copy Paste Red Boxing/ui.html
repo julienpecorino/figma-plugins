@@ -1,0 +1,31 @@
+// Define the HTML-like user interface
+
+  <style>
+    .container {
+      display: flex;
+      flex-direction: column;
+      padding: 16px;
+    }
+    .input {
+      margin-bottom: 8px;
+    }
+  </style>
+  
+  <div class="container">
+    <label for="arrowInput">Enter instance name for 'Red Boxing/Arrow':</label>
+    <input type="text" id="arrowInput" class="input" />
+    <label for="boxInput">Enter instance name for 'Red Boxing/Box':</label>
+    <input type="text" id="boxInput" class="input" />
+    <label for="pageInput">Enter the name of the new selected page:</label>
+    <input type="text" id="pageInput" class="input" />
+    <button onclick="applyNames()">Apply Names</button>
+  </div>
+
+  <script>
+    function applyNames() {
+      const arrowName = document.getElementById("arrowInput").value;
+      const boxName = document.getElementById("boxInput").value;
+      const pageName = document.getElementById("pageInput").value;
+      parent.postMessage({ pluginMessage: { arrowName, boxName, pageName } }, "*");
+    }
+  </script>

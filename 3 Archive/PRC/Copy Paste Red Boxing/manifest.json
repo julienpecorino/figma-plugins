@@ -1,0 +1,10 @@
+{
+  "name": "Copy & Paste Red Boxing",
+  "id": "11265111878720070293",
+  "api": "1.0.0",
+  "ui": "ui.html",
+  "main": "code.js",
+  "editorType": [
+    "figma"
+  ]
+}
